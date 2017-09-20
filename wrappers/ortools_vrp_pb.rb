@@ -13,19 +13,24 @@ Google::Protobuf::DescriptorPool.generated_pool.build do
     optional :start, :int64, 1
     optional :end, :int64, 2
   end
+  add_message "ortools_vrp.TimeTable" do
+    repeated :timewindows, :message, 1, "ortools_vrp.TimeWindow"
+    optional :duration, :uint32, 2
+    optional :setup_duration, :uint32, 3
+    optional :late_multiplier, :float, 4
+    optional :id, :string, 5
+  end
   add_message "ortools_vrp.Service" do
-    repeated :time_windows, :message, 1, "ortools_vrp.TimeWindow"
-    repeated :quantities, :uint32, 2
-    optional :duration, :uint32, 3
-    optional :priority, :uint32, 4
-    repeated :vehicle_indices, :int32, 5
-    optional :matrix_index, :uint32, 6
-    optional :setup_duration, :uint32, 7
-    optional :type, :string, 8
-    optional :id, :string, 9
-    optional :late_multiplier, :float, 10
-    repeated :setup_quantities, :uint32, 11
-    optional :additional_value, :uint32, 12
+    repeated :quantities, :uint32, 1
+    optional :priority, :uint32, 2
+    repeated :vehicle_indices, :int32, 3
+    optional :matrix_index, :uint32, 4
+    optional :timetable_index, :uint32, 5
+    optional :type, :string, 6
+    optional :id, :string, 7
+    repeated :setup_quantities, :uint32, 8
+    optional :additional_value, :uint32, 9
+    optional :alternative_id, :string, 10
   end
   add_message "ortools_vrp.Rest" do
     repeated :time_windows, :message, 1, "ortools_vrp.TimeWindow"
@@ -64,12 +69,14 @@ Google::Protobuf::DescriptorPool.generated_pool.build do
     repeated :services, :message, 4, "ortools_vrp.Service"
     repeated :matrices, :message, 5, "ortools_vrp.Matrix"
     repeated :relations, :message, 6, "ortools_vrp.Relation"
+    repeated :timetables, :message, 7, "ortools_vrp.TimeTable"
   end
 end
 
 module OrtoolsVrp
   Matrix = Google::Protobuf::DescriptorPool.generated_pool.lookup("ortools_vrp.Matrix").msgclass
   TimeWindow = Google::Protobuf::DescriptorPool.generated_pool.lookup("ortools_vrp.TimeWindow").msgclass
+  TimeTable = Google::Protobuf::DescriptorPool.generated_pool.lookup("ortools_vrp.TimeTable").msgclass
   Service = Google::Protobuf::DescriptorPool.generated_pool.lookup("ortools_vrp.Service").msgclass
   Rest = Google::Protobuf::DescriptorPool.generated_pool.lookup("ortools_vrp.Rest").msgclass
   Capacity = Google::Protobuf::DescriptorPool.generated_pool.lookup("ortools_vrp.Capacity").msgclass
