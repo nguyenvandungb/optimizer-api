@@ -280,6 +280,17 @@ class RealCasesTest < Minitest::Test
       # Check elapsed time
       assert result[:elapsed] < 5000, "Too long elapsed time: #{result[:elapsed]}"
     end
+
+    # Paris - Large number of alternative activitiés for each service
+    def test_ortools_large_number_of_alternative
+      ortools = OptimizerWrapper::ORTOOLS
+      vrp = Models::Vrp.create(Hashie.symbolize_keys(JSON.parse(File.open('test/fixtures/' + self.name[5..-1] + '.json').to_a.join)['vrp']))
+      assert ortools.inapplicable_solve?(vrp).empty?
+      result = OptimizerWrapper.wrapper_vrp('ortools', {services: {vrp: [:ortools]}}, vrp, nil)
+      assert result
+      assert_equal 15, result[:routes].size
+      assert_equal vrp[:services].size + vrp.vehicles.size * 2, result[:routes].collect{ |route| route[:activities].size }.reduce(:+)
+    end
   end
 
 end

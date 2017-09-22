@@ -188,9 +188,13 @@ module Api
                 optional(:skills, type: Array[String], desc: 'Particular abilities required by a vehicle to perform this service')
 
                 optional(:type, type: Symbol, desc: 'service, pickup or delivery')
-                requires(:activity, type: Hash, desc: 'Details of the activity performed to accomplish the current service') do
+                optional(:activity, type: Hash, desc: 'Details of the activity performed to accomplish the current service') do
                   Vrp.vrp_request_activity(self)
                 end
+                optional(:activities, type: Array, desc: 'Details of the activities which could be performed to accomplish the current service, at most one wihtin the set') do
+                  Vrp.vrp_request_activity(self)
+                end
+                at_least_one_of :activity, :activities
                 optional(:quantities, type: Array, desc: 'Define the entities which are taken or dropped') do
                   requires(:unit_id, type: String, desc: 'Unit related to this quantity')
                   optional(:value, type: Float, desc: 'Value of the current quantity')

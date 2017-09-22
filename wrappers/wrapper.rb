@@ -219,6 +219,12 @@ module Wrappers
       }
     end
 
+    def assert_no_alternative(vrp)
+      vrp.services.none? { |service|
+        !service.activities.empty?
+      }
+    end
+
     def solve_synchronous?(vrp)
       false
     end

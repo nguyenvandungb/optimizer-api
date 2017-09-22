@@ -53,58 +53,64 @@ module Wrappers
       timetables = []
       timewindows = []
       services = []
+      services_activities = []
       vrp.services.each.collect{ |service|
-        vehicles_indices = if !service[:skills].empty? && (vrp.vehicles.all? { |vehicle| vehicle.skills.empty? } ||
-          vrp.vehicles.none? { |vehicle| !vehicle[:skills].empty? && ((vehicle.skills[0] & service.skills).size == service.skills.size) })
-          [-1]
-        else
-          vrp.vehicles.collect.with_index{ |vehicle, index|
-            if service.skills.empty? || !vehicle.skills.empty? && ((vehicle.skills[0] & service.skills).size == service.skills.size)
-              index
-            else
-              nil
-            end
-          }.compact
-        end
-        split_number = if service.activity.timewindows && service.activity.late_multiplier && service.activity.late_multiplier > 0
-          [service.activity.timewindows.size, 1].max
-        else
-          1
-        end
-        split_size = service.activity.timewindows.nil? ? 1 : service.activity.timewindows.size/split_number
+        activities = []
+        activities << service[:activity] if service[:activity]
+        activities += service[:activities] if service[:activities]
+        services_activities += activities
+        activities.each.with_index{ |activity, activity_index|
+          vehicles_indices = if !service[:skills].empty? && (vrp.vehicles.all? { |vehicle| vehicle.skills.empty? } ||
+            vrp.vehicles.none? { |vehicle| !vehicle[:skills].empty? && ((vehicle.skills[0] & service.skills).size == service.skills.size) })
+            [-1]
+          else
+            vrp.vehicles.collect.with_index{ |vehicle, index|
+              if service.skills.empty? || !vehicle.skills.empty? && ((vehicle.skills[0] & service.skills).size == service.skills.size)
+                index
+              else
+                nil
+              end
+            }.compact
+          end
+          split_number = if activity.timewindows && activity.late_multiplier && activity.late_multiplier > 0
+            [activity.timewindows.size, 1].max
+          else
+            1
+          end
+          split_size = activity.timewindows.nil? ? 1 : activity.timewindows.size/split_number
 
-        timewindows << service.activity.timewindows.collect{ |tw| OrtoolsVrp::TimeWindow.new(
-            start: tw.start || -2**56,
-            end: tw.end || 2**56,
-          ) }
+          timewindows << activity.timewindows.collect{ |tw| OrtoolsVrp::TimeWindow.new(
+              start: tw.start || -2**56,
+              end: tw.end || 2**56,
+            ) }
 
-        (1..split_number).each{ |tw_index|
-          timetables << OrtoolsVrp::TimeTable.new(
-            timewindows: timewindows.last.select.with_index{ |tw, i| (i >= (tw_index - 1) * split_size) && (i < tw_index * split_size) },
-            duration: service.activity.duration,
-            setup_duration: service.activity.setup_duration,
-            late_multiplier: service.activity.late_multiplier || 0,
-            id: service.id
-          )
-
-          services << OrtoolsVrp::Service.new(
-            quantities: vrp.units.collect{ |unit|
-              q = service.quantities.find{ |quantity| quantity.unit == unit }
-              q && q.value ? (q.value*(unit.counting ? 1 : 1000)+0.5).to_i : 0
-            },
-            type: service.type.to_s,
-            additional_value: service.activity.additional_value,
-            priority: service.priority,
-            timetable_index: timetables.size - 1,
-            matrix_index: points[service.activity.point_id].matrix_index,
-            vehicle_indices: service.sticky_vehicles.size > 0 ? service.sticky_vehicles.collect{ |sticky_vehicle| vrp.vehicles.index(sticky_vehicle) } : vehicles_indices,
-            id: service.id,
-            alternative_id: service.id,
-            setup_quantities: vrp.units.collect{ |unit|
-              q = service.quantities.find{ |quantity| quantity.unit == unit }
-              q && q.setup_value && unit.counting ? (q.setup_value).to_i : 0
-            },
-          )
+          (1..split_number).each{ |tw_index|
+            timetables << OrtoolsVrp::TimeTable.new(
+              timewindows: timewindows.last.select.with_index{ |tw, i| (i >= (tw_index - 1) * split_size) && (i < tw_index * split_size) },
+              duration: activity.duration,
+              setup_duration: activity.setup_duration,
+              late_multiplier: activity.late_multiplier || 0,
+              id: "#{service.id}_alternative_#{activity_index}"
+            )
+            services << OrtoolsVrp::Service.new(
+              quantities: vrp.units.collect{ |unit|
+                q = service.quantities.find{ |quantity| quantity.unit == unit }
+                q && q.value ? (q.value*(unit.counting ? 1 : 1000)+0.5).to_i : 0
+              },
+              type: service.type.to_s,
+              additional_value: activity.additional_value,
+              priority: service.priority,
+              timetable_index: timetables.size - 1,
+              matrix_index: points[activity.point_id].matrix_index,
+              vehicle_indices: service.sticky_vehicles.size > 0 ? service.sticky_vehicles.collect{ |sticky_vehicle| vrp.vehicles.index(sticky_vehicle) } : vehicles_indices,
+              id: "#{service.id}_alternative_#{activity_index}",
+              alternative_id: service.id,
+              setup_quantities: vrp.units.collect{ |unit|
+                q = service.quantities.find{ |quantity| quantity.unit == unit }
+                q && q.setup_value && unit.counting ? (q.setup_value).to_i : 0
+              },
+            )
+          }
         }
       }
 
@@ -176,7 +182,8 @@ module Wrappers
           timetable_index: timetables.size - 1,
           matrix_index: points[shipment.delivery.point_id].matrix_index,
           vehicle_indices: shipment.sticky_vehicles.size > 0 ? shipment.sticky_vehicles.collect{ |sticky_vehicle| vrp.vehicles.index(sticky_vehicle) } : vehicles_indices,
-          id: shipment.id + "delivery"
+          id: shipment.id + "delivery",
+          alternative_id: shipment.id + "delivery"
         )
 
         # Add relation linking pickup and delivery services
@@ -254,7 +261,7 @@ module Wrappers
         relations: relations,
         timetables: timetables
       )
-      ret = run_ortools(problem, vrp, services, points, matrix_indices, thread_proc, &block)
+      ret = run_ortools(problem, vrp, services, services_activities, points, matrix_indices, thread_proc, &block)
       case ret
       when String
         return ret
@@ -264,7 +271,7 @@ module Wrappers
         return ret
       end
 
-      parse_output(vrp, services, points, matrix_indices, cost, iterations, result)
+      parse_output(vrp, services, services_activities, points, matrix_indices, cost, iterations, result)
     end
 
     def closest_rest_start(timewindows, current_start)
@@ -282,9 +289,11 @@ module Wrappers
       vrp.resolution_duration || vrp.resolution_iterations_without_improvment
     end
 
-    def parse_output(vrp, services, points, matrix_indices, cost, iterations, result)
+    def parse_output(vrp, services, services_activities, points, matrix_indices, cost, iterations, result)
       result = result.split(';').collect{ |r| r.split(',').collect{ |i| i.scan(/[0-9]+/).collect{ |j| Integer(j) } }[1..-2] }
-
+      problem_size = 0
+      problem_size += services_activities.size if services_activities
+      problem_size += vrp.shipments.size * 2 if vrp.shipments
       {
         cost: cost,
         iterations: iterations,
@@ -311,28 +320,30 @@ module Wrappers
             end] +
             route.collect{ |i|
               route_rest_index = 0
-              if i.first < matrix_indices.size + 2
-                if i.first < vrp.services.size
+              if i.first < problem_size + 2
+                if i.first < services_activities.size
                   point = services[i.first].matrix_index
                   earliest_start = i.size > 1 ? i.last : earliest_start
                   current_activity = {
-                    service_id: vrp.services[i.first].id,
+                    service_id: services[i.first].alternative_id,
+                    point_id: services_activities[i.first].point_id,
                     travel_time: (previous && point && vrp.matrices.find{ |matrix| matrix.id == vehicle.matrix_id }[:time] ? vrp.matrices.find{ |matrix| matrix.id == vehicle.matrix_id }[:time][previous][point] : 0),
                     travel_distance: (previous && point && vrp.matrices.find{ |matrix| matrix.id == vehicle.matrix_id }[:distance] ? vrp.matrices.find{ |matrix| matrix.id == vehicle.matrix_id }[:distance][previous][point] : 0),
                     begin_time: earliest_start,
-                    departure_time: i.size > 1 ? earliest_start + vrp.services[i.first].activity[:duration].to_i : nil
+                    departure_time: i.size > 1 ? earliest_start + services_activities[i.first][:duration].to_i : nil
   #              pickup_shipments_id [:id0:],
   #              delivery_shipments_id [:id0:]
                   }
-                  earliest_start += vrp.services[i.first].activity[:duration].to_i
+                  earliest_start += services_activities[i.first][:duration].to_i
                   previous = point
                   current_activity
                 else
-                  shipment_index = ((i.first - vrp.services.size)/2).to_i
-                  shipment_activity = (i.first - vrp.services.size)%2
+                  shipment_index = ((i.first - services_activities.size)/2).to_i
+                  shipment_activity = (i.first - services_activities.size)%2
                   point = services[i.first].matrix_index
                   earliest_start = i.size > 1 ? i.last : earliest_start
                   current_activity = {
+                    point_id: shipment_activity == 0 ? vrp.shipments[shipment_index].pickup.point_id : vrp.shipments[shipment_index].delivery.point_id,
                     pickup_shipment_id: shipment_activity == 0 && vrp.shipments[shipment_index].id,
                     delivery_shipment_id: shipment_activity == 1 && vrp.shipments[shipment_index].id,
                     travel_time: (previous && point && vrp.matrices.find{ |matrix| matrix.id == vehicle.matrix_id }[:time] ? vrp.matrices.find{ |matrix| matrix.id == vehicle.matrix_id }[:time][previous][point] : 0),
@@ -363,12 +374,12 @@ module Wrappers
               point_id: vehicle.end_point.id
             }]).compact
         }},
-        unassigned: (vrp.services.collect(&:id) - result.flatten(1).collect{ |i| i.first < vrp.services.size && vrp.services[i.first].id }).collect{ |service_id| {service_id: service_id} } +
-        (vrp.shipments.collect(&:id) - result.flatten(1).collect{ |i| i.first >= vrp.services.size && i.first - vrp.services.size < vrp.shipments.size && vrp.shipments[i.first - vrp.services.size].id }).collect{ |shipment_id| {shipment_id: shipment_id} }
+        unassigned: (vrp.services.collect(&:id) - result.flatten(1).collect{ |i| i.first < services_activities.size && services[i.first].alternative_id }).collect{ |service_id| {service_id: service_id} } +
+        (vrp.shipments.collect(&:id) - result.flatten(1).collect{ |i| i.first >= services_activities.size && i.first - services_activities.size < vrp.shipments.size && vrp.shipments[i.first - services_activities.size].id }).collect{ |shipment_id| {shipment_id: shipment_id} }
       }
     end
 
-    def run_ortools(problem, vrp, services, points, matrix_indices, thread_proc = nil, &block)
+    def run_ortools(problem, vrp, services, services_activities, points, matrix_indices, thread_proc = nil, &block)
       input = Tempfile.new('optimize-or-tools-input', tmpdir=@tmp_dir)
       input.write(OrtoolsVrp::Problem.encode(problem))
       input.close
@@ -416,7 +427,7 @@ module Wrappers
         r = / Cost : ([0-9.eE+]+)/.match(line)
         r && (cost = Float(r[1]))
         r = /(([0-9]+(,[0-9]+(\[[0-9]+\])*)*;)+)+/.match(line)
-        block.call(self, iterations, nil, cost, r && parse_output(vrp, services, points, matrix_indices, cost, iterations, r[1])) if block
+        block.call(self, iterations, nil, cost, r && parse_output(vrp, services, services_activities, points, matrix_indices, cost, iterations, r[1])) if block
       }
 
       result = out.split("\n")[-1]
