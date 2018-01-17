@@ -28,6 +28,7 @@ require './api/root'
 
 
 require 'minitest/reporters'
+require 'minitest/focus'
 Minitest::Reporters.use!
 
 require 'grape'
