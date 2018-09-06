@@ -100,3 +100,18 @@ If you don't want to run real cases tests you can deactive them:
 ```
 SKIP_REAL_CASES=true APP_ENV=test bundle exec rake test
 ```
+
+## Docker 
+
+### Building the image
+
+```
+docker build -f docker/Dockerfile -t registry-beta.mapotempo.com/mapotempo/optimizer-api:mweb_59.0.0 .
+```
+
+### Pushing the image
+
+```
+docker login registry-beta.mapotempo.com
+docker push registry-beta.mapotempo.com/mapotempo/optimizer-api:mweb_59.0.0
+```
