@@ -407,8 +407,11 @@ module Api
                   vehicles: vehicles,
                   configuration: configParams
               }
-              path = 'test/' + "params"
+              path = 'test/' + "vrp"
               File.write(path + '.json', {vrp: vrp}.to_json)
+
+              path = 'test/' + "params"
+              File.write(path + '.json', params.to_json)
               #rooturl = "http://api.tl.limitless.cloud/0.1/"
               rooturl = "http://localhost:1791/0.1/"
               resource_vrp = RestClient::Resource.new(rooturl + 'vrp/submit.json', timeout: nil)
