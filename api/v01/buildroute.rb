@@ -409,7 +409,7 @@ module Api
               }
               path = 'test/' + "params"
               File.write(path + '.json', {vrp: vrp}.to_json)
-              //rooturl = "http://api.tl.limitless.cloud/0.1/"
+              #rooturl = "http://api.tl.limitless.cloud/0.1/"
               rooturl = "http://localhost:1791/0.1/"
               resource_vrp = RestClient::Resource.new(rooturl + 'vrp/submit.json', timeout: nil)
               json = resource_vrp.post({api_key: apikey, vrp: vrp}.to_json, content_type: :json, accept: :json) { |response, request, result, &block|
