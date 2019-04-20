@@ -13,7 +13,8 @@
 .dat*
 .repl_history
 build/
-
+test/vrp.json
+test/params.json
 ## Documentation cache and generated files:
 /.yardoc/
 /_yardoc/

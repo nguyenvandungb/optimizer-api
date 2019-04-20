@@ -374,11 +374,19 @@ module Api
                         limit:700
                     }
                 ]
+
+                maxTimeDistance = 0
+                vehicleStart =  Buildroute.getDuration(v[:start_time].to_s)
+                vehicleEnd =  Buildroute.getDuration(v[:end_time].to_s)
+                distanceFromStartToEnd = vehicleEnd.to_i - vehicleStart.to_i
+                if (distanceFromStartToEnd > maxTimeDistance)
+                  maxTimeDistance = distanceFromStartToEnd
+                end
                 vehicle = {
                     id: v[:reference],
                     timewindows: [{
-                        start: Buildroute.getDuration(v[:start_time].to_s),
-                        end: Buildroute.getDuration(v[:end_time].to_s)
+                          start: vehicleStart,
+                          end: vehicleEnd
                     }],
                     router_mode: v[:router_mode] || 'crow',
                     router_dimension: v[:router_dimension] || 'time',
@@ -386,7 +394,8 @@ module Api
                     skills: [
                         ["Skill1"]
                     ],
-                    maximum_ride_time: 50000,
+                    duration: maxTimeDistance,
+                    maximum_ride_time: maxTimeDistance,
                     capacities: capacities
                 }
                 if (startRef != '')
@@ -412,8 +421,10 @@ module Api
 
               path = 'test/' + "params"
               File.write(path + '.json', params.to_json)
-              #rooturl = "http://api.tl.limitless.cloud/0.1/"
               rooturl = "http://localhost:1791/0.1/"
+              if params[:debugging]
+                  rooturl = "http://api.tl.limitless.cloud/0.1/"
+              end
               resource_vrp = RestClient::Resource.new(rooturl + 'vrp/submit.json', timeout: nil)
               json = resource_vrp.post({api_key: apikey, vrp: vrp}.to_json, content_type: :json, accept: :json) { |response, request, result, &block|
                 if response.code != 200 && response.code != 201
@@ -443,6 +454,9 @@ module Api
                     raise RuntimeError.new(result['job']['avancement'] || 'Optimizer return unknown error')
                   end
                 end
+              end
+              if params[:debugging]
+                result[:vrp] = vrp
               end
               result
           end
