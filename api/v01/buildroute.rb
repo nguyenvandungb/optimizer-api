@@ -398,6 +398,7 @@ module Api
                     skills: [
                         ["Skill1"]
                     ],
+                    force_start: true,
                     duration: maxTimeDistance,
                     maximum_ride_time: maxTimeDistance,
                     capacities: capacities
