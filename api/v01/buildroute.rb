@@ -323,7 +323,8 @@ module Api
               #Auto assign start/end depot to vehicles
               # If Vehicles have no start/end => we will use soonest order of this day.
 
-
+              #calculate max duration depend on vehicles
+              maxDuration = 0
               vehiclesInput.collect{ |v|
                 startRef = ''
                 endRef = ''
@@ -382,6 +383,9 @@ module Api
                 if (distanceFromStartToEnd > maxTimeDistance)
                   maxTimeDistance = distanceFromStartToEnd
                 end
+                if (maxDuration < maxTimeDistance)
+                  maxDuration = maxTimeDistance
+                end
                 vehicle = {
                     id: v[:reference],
                     timewindows: [{
@@ -406,8 +410,10 @@ module Api
                 end
                 vehicles.push(vehicle)
               }
-
-
+              
+              #update duration
+              configParams[:resolution][:duration] = maxDuration
+  
               vrp = {
                   points: points,
                   units: units,
