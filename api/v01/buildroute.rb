@@ -392,7 +392,7 @@ module Api
                           start: vehicleStart,
                           end: vehicleEnd
                     }],
-                    router_mode: v[:router_mode] || 'crow',
+                    router_mode: 'osrm5',
                     router_dimension: v[:router_dimension] || 'time',
                     speed_multiplier: v[:speed_multiplie] || 1,
                     skills: [
