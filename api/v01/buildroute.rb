@@ -173,6 +173,7 @@ module Api
                 delivery = nil
                 pickupRefe = ''
                 deliverRef = ''
+                priority = order[:priority] || 4
                 pickup_lat = order[:pickup_lat].to_s.to_f || 0
                 pickup_lng = order[:pickup_lng].to_s.to_f || 0
                 delivery_lat = order[:delivery_lat].to_s.to_f || 0
@@ -248,6 +249,7 @@ module Api
                   shipment = {
                       id: order[:reference],
                       maximum_inroute_duration: nil,
+                      priority: priority,
                       pickup: {
                           point_id: pickupRefe,
                           timewindows: pickTimeWindows,
@@ -277,6 +279,7 @@ module Api
                   service = {
                       id: order[:reference],
                       type: 'service',
+                      priority: priority,
                       activity: {
                           point_id: pickupRefe,
                           timewindows: pickTimeWindows,
@@ -299,6 +302,7 @@ module Api
                   service = {
                       id: order[:reference],
                       type: 'service',
+                      priority: priority,
                       activity: {
                           point_id: deliverRef,
                           timewindows: deliveryTimeWindows,
@@ -398,7 +402,8 @@ module Api
                     skills: [
                         ["Skill1"]
                     ],
-                    force_start: true,
+                    shift_preference: 'force_start',
+                    motorway: false,
                     duration: maxTimeDistance,
                     maximum_ride_time: maxTimeDistance,
                     capacities: capacities
@@ -414,7 +419,12 @@ module Api
               
               #update duration
               configParams[:resolution][:duration] = maxDuration
-  
+              configParams[:resolution][:iterations_without_improvment] = 5
+              configParams[:resolution][:compute_initial_solution] = true
+              configParams[:resolution][:solver_parameter] = 0
+              #configParams[:resolution][:minimum_duration] = 300
+              #configParams[:resolution][:time_out_multiplier] = 2
+             # configParams[:resolution][:allow_partial_assignment] = false
               vrp = {
                   points: points,
                   units: units,
@@ -432,7 +442,7 @@ module Api
               if params[:debugging]
                   rooturl = "http://api.tl.limitless.cloud/0.1/"
               end
-              resource_vrp = RestClient::Resource.new(rooturl + 'vrp/submit.json', timeout: nil)
+              resource_vrp = RestClient::Resource.new(rooturl + 'vrp/submit.json', timeout: 600)
               json = resource_vrp.post({api_key: apikey, vrp: vrp}.to_json, content_type: :json, accept: :json) { |response, request, result, &block|
                 if response.code != 200 && response.code != 201
                   json = (response && /json/.match(response.headers[:content_type]) && response.size > 1) ? JSON.parse(response) : nil
@@ -441,6 +451,7 @@ module Api
                         elsif json && json['error']
                           json['error']
                         end
+                  puts response
                   raise VRPUnprocessableError, msg || 'Unexpected error'
                 end
                 response
