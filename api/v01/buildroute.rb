@@ -60,6 +60,19 @@ module Api
       content_type :csv, 'text/csv;'
       parser :csv, CSVParser
       default_format :json
+      def self.getPriorityOfOrder(order)
+        eligibility_type = order[:eligibility_type] || ''
+        eligibility_by_is_deadline = order[:eligibility_by_is_deadline] || false
+        #importtance: 0 : high, 1: normal, 2: low
+        importance = order[:importance] || 2
+        basePriority = 3 #for any
+        if (eligibility_type == 'on' || (eligibility_type == 'by' && eligibility_by_is_deadline == true))
+          basePriority = 0
+        end
+
+        priorityValue = basePriority + importance
+        priorityValue
+      end
       def self.getDuration(time)
         seconds = 0
         if dt = Time.parse(time) rescue false
@@ -173,7 +186,7 @@ module Api
                 delivery = nil
                 pickupRefe = ''
                 deliverRef = ''
-                priority = order[:priority] || 4
+                priority = Buildroute.getPriorityOfOrder(order)
                 pickup_lat = order[:pickup_lat].to_s.to_f || 0
                 pickup_lng = order[:pickup_lng].to_s.to_f || 0
                 delivery_lat = order[:delivery_lat].to_s.to_f || 0
